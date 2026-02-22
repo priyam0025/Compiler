@@ -1,0 +1,12 @@
+return 25; //we want to convert this 
+
+//into this
+
+global _stat
+start:
+    mov rax, 60
+    mov rdi, 25
+    syscall
+
+//return 25; (List of characters)
+//Step 1: Tokenisation :- RETURN , INT_LIT => 25 , SEMI (List of tokens)
