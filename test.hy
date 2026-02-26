@@ -1,1 +1,4 @@
-exit 25;
+let x = 7;
+let y = 8;
+let z = 1;
+exit(x);

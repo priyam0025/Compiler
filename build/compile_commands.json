@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/priyam/dev/hydrogen/build",
+  "command": "/usr/bin/g++   -g -std=gnu++20 -o CMakeFiles/hydro.dir/src/main.cpp.o -c /home/priyam/dev/hydrogen/src/main.cpp",
+  "file": "/home/priyam/dev/hydrogen/src/main.cpp",
+  "output": "CMakeFiles/hydro.dir/src/main.cpp.o"
+}
+]

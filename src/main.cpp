@@ -136,16 +136,16 @@ int main(int argc, char* argv[]) {
     }
 
     Parser parser(std::move(tokens));
-    std::optional<node::NodeExit> tree = parser.parse();
-    if (!tree.has_value()) {
-        std::cerr << "No exit statement found" << std::endl;
+    std::optional<NodeProg> prog = parser.parse_prog();
+    if (!prog.has_value()) {
+        std::cerr << "Invalid program" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    Generator generator(tree.value());
+    Generator generator(prog.value());
     {
         std::fstream file("out.asm", std::ios::out);
-        file << generator.generate();
+        file << generator.gen_prog();
     }
 
     // const std::string asm_text = tokens_to_asm(tokens);
@@ -163,8 +163,18 @@ int main(int argc, char* argv[]) {
     //     file << asm_text;
     // }
 
-    system("nasm -felf64 out.asm");
-    system("ld -o out out.o");
+    // system("nasm -felf64 out.asm");
+    // system("ld -o out out.o");
+    int rc = std::system("nasm -felf64 out.asm");
+    if (rc != 0) {
+        std::cerr << "nasm failed with code: " << rc << std::endl;
+        return rc;
+    }
+    rc = std::system("ld -o out out.o");
+    if (rc != 0) {
+        std::cerr << "ld failed with code: " << rc << std::endl;
+        return rc;
+    }
 
     return EXIT_SUCCESS;
 }

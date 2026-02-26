@@ -165,5 +165,6 @@ CMakeFiles/hydro.dir/src/main.cpp.o: \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
  /home/priyam/dev/hydrogen/src/./generation.hpp \
- /home/priyam/dev/hydrogen/src/././parser.hpp \
+ /home/priyam/dev/hydrogen/src/././parser.hpp /usr/include/c++/13/variant \
+ /usr/include/c++/13/bits/parse_numbers.h \
  /home/priyam/dev/hydrogen/src/./././tokenization.hpp

@@ -7,11 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 
-enum class TokenType {
-    exit,
-    int_lit,
-    semi
-};
+enum class TokenType { exit, int_lit, semi, open_paren, close_paren, ident, let, eq};
 struct Token {
     TokenType type;
     std::optional<std::string> value;
@@ -27,55 +23,76 @@ class Tokenizer {
             std::vector<Token> tokens;
             std::string buf;
 
-            while (peak().has_value()) 
+            while (peek().has_value()) 
             {
-                if (std::isalpha(peak().value())) {
+                char c = peek().value();
+                if (std::isalpha(static_cast<unsigned char>(c))) {
+                    buf.clear();
                     buf.push_back(consume());
-                    while (peak().has_value() && std::isalpha(peak().value())) { 
+                    while (peek().has_value() && std::isalpha(static_cast<unsigned char>(peek().value()))) { 
                         buf.push_back(consume());
                     }
-                    if (buf =="exit") {
+                    if (buf == "exit") {
                         tokens.push_back(Token{TokenType::exit, std::nullopt});
-                        buf.clear();
                         continue;
-                    } else {
-                        std::cerr << "You shit1!" << std::endl;
-                        exit(EXIT_FAILURE);
+                    }
+                    else if (buf == "let") {
+                        tokens.push_back(Token{TokenType::let, std::nullopt});
+                        continue;
+                    } 
+                    else {
+                        tokens.push_back(Token{TokenType::ident, buf});
+                        continue;
                     }
                 }
-                else if (std::isdigit(peak().value())) {
+                else if (std::isdigit(static_cast<unsigned char>(c))) {
+                    buf.clear();
                     buf.push_back(consume());
-                    while (peak().has_value() && std::isdigit(peak().value())) {
+                    while (peek().has_value() && std::isdigit(static_cast<unsigned char>(peek().value()))) {
                         buf.push_back(consume());
                     }
                     tokens.push_back(Token{TokenType::int_lit, buf});
-                    buf.clear();
                     continue;
                 }
-                else if (peak().value() == ';') {
+                else if (c == ')') {
+                    consume();
+                    tokens.push_back(Token{TokenType::close_paren, std::nullopt});
+                    continue;
+                }
+                else if (c == '(') {
+                    consume();
+                    tokens.push_back(Token{TokenType::open_paren, std::nullopt});
+                    continue;
+                }
+                else if (c == ';') {
                     consume();
                     tokens.push_back(Token{TokenType::semi, std::nullopt});
                     continue;
                 }
-                else if (std::isspace(peak().value())) {
+                else if (c == '=') {
+                    consume();
+                    tokens.push_back(Token{TokenType::eq, std::nullopt});
+                    continue;
+                }
+                else if (std::isspace(static_cast<unsigned char>(c))) {
                     consume();
                     continue;
                 }
                 else {
-                    std::cerr << "You shit2!" << std::endl;
-                    exit(EXIT_FAILURE);
+                    std::cerr << "Unexpected character in input: '" << c << "'" << std::endl;
+                    std::exit(EXIT_FAILURE);
                 }
             }
 
             return tokens;
         }
     private:
-        inline std::optional<char> peak(std::size_t ahead = 0) const 
+        inline std::optional<char> peek(std::size_t offset = 0) const 
         {
-            if (m_index + ahead >= m_src.length()) {
+            if (m_index + offset >= m_src.length()) {
                 return {};
             } else {
-                return m_src.at(m_index + ahead);
+                return m_src.at(m_index + offset);
             }
         }
 
