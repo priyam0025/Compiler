@@ -1,4 +1,2 @@
-let x = 7;
-let y = 8;
-let z = 1;
+let x = 20 + 10;
 exit(x);
