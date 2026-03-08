@@ -1,2 +1,2 @@
-let x = 20 + 10;
+let x = 3 + 3;
 exit(x);
