@@ -35,9 +35,21 @@ struct NodeBinExprAdd
     NodeExpr *rhs;
 };
 
+struct NodeBinExprSub
+{
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
+struct NodeBinExprDiv
+{
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
 struct NodeBinExpr
 {
-    std::variant<NodeBinExprMulti *, NodeBinExprAdd *> var;
+    std::variant<NodeBinExprMulti *, NodeBinExprAdd *, NodeBinExprSub *, NodeBinExprDiv *> var;
 };
 
 struct NodeTerm
@@ -119,7 +131,7 @@ public:
         return {};
     }
 
-    // parses multiplication (left-associative, higher precedence than +)
+    // parses multiplication/division (left-associative, higher precedence than +/-)
     std::optional<NodeExpr *> parse_mul_expr()
     {
         auto term = parse_term();
@@ -136,8 +148,8 @@ public:
             return {};
         }
 
-        while (peek().has_value() && peek()->type == TokenType::mul) {
-            consume(); // consume '*'
+        while (peek().has_value() && (peek()->type == TokenType::mul || peek()->type == TokenType::div)) {
+            TokenType op = consume().type; // consume '*' or '/'
 
             auto rhs_term = parse_term();
             if (!rhs_term) {
@@ -152,15 +164,22 @@ public:
             } else if (auto r_ident = std::get_if<NodeTermIdent *>(&rhs_term_ptr->var)) {
                 rhs_expr->var = *r_ident;
             } else {
-                std::cerr << "Invalid RHS term for '*'\n";
+                std::cerr << "Invalid RHS term for multiplicative expression\n";
                 std::exit(EXIT_FAILURE);
             }
 
             auto bin = m_allocator.alloc<NodeBinExpr>();
-            auto mul = m_allocator.alloc<NodeBinExprMulti>();
-            mul->lhs = current;
-            mul->rhs = rhs_expr;
-            bin->var = mul;
+            if (op == TokenType::mul) {
+                auto mul = m_allocator.alloc<NodeBinExprMulti>();
+                mul->lhs = current;
+                mul->rhs = rhs_expr;
+                bin->var = mul;
+            } else {
+                auto div = m_allocator.alloc<NodeBinExprDiv>();
+                div->lhs = current;
+                div->rhs = rhs_expr;
+                bin->var = div;
+            }
 
             current = m_allocator.alloc<NodeExpr>();
             current->var = bin;
@@ -169,7 +188,7 @@ public:
         return current;
     }
 
-    // top-level expression parser: handles addition (left-associative) of mul-exprs
+    // top-level expression parser: handles + and - (left-associative) of mul-exprs
     std::optional<NodeExpr *> parse_expr()
     {
         auto left = parse_mul_expr();
@@ -177,8 +196,8 @@ public:
 
         NodeExpr *current = left.value();
 
-        while (peek().has_value() && peek()->type == TokenType::plus) {
-            consume(); // consume '+'
+        while (peek().has_value() && (peek()->type == TokenType::plus || peek()->type == TokenType::minus)) {
+            TokenType op = consume().type; // consume '+' or '-'
 
             auto right = parse_mul_expr();
             if (!right) {
@@ -187,10 +206,17 @@ public:
             }
 
             auto bin = m_allocator.alloc<NodeBinExpr>();
-            auto add = m_allocator.alloc<NodeBinExprAdd>();
-            add->lhs = current;
-            add->rhs = right.value();
-            bin->var = add;
+            if (op == TokenType::plus) {
+                auto add = m_allocator.alloc<NodeBinExprAdd>();
+                add->lhs = current;
+                add->rhs = right.value();
+                bin->var = add;
+            } else {
+                auto sub = m_allocator.alloc<NodeBinExprSub>();
+                sub->lhs = current;
+                sub->rhs = right.value();
+                bin->var = sub;
+            }
 
             current = m_allocator.alloc<NodeExpr>();
             current->var = bin;

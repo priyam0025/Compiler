@@ -7,7 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 
-enum class TokenType { exit, int_lit, semi, open_paren, close_paren, ident, let, eq, plus, mul};
+enum class TokenType { exit, int_lit, semi, open_paren, close_paren, ident, let, eq, plus, minus, mul, div};
 struct Token {
     TokenType type;
     std::optional<std::string> value;
@@ -79,9 +79,19 @@ class Tokenizer {
                     tokens.push_back(Token{TokenType::plus, std::nullopt});
                     continue;
                 }
+                else if (c == '-') {
+                    consume();
+                    tokens.push_back(Token{TokenType::minus, std::nullopt});
+                    continue;
+                }
                 else if (c == '*') {
                     consume();
                     tokens.push_back(Token{TokenType::mul, std::nullopt});
+                    continue;
+                }
+                else if (c == '/') {
+                    consume();
+                    tokens.push_back(Token{TokenType::div, std::nullopt});
                     continue;
                 }
                 else if (std::isspace(static_cast<unsigned char>(c))) {

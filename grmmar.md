@@ -13,5 +13,7 @@
            | ident
 
 [binExpr] -> [expr] * [expr]   (precedence 1)
+           | [expr] / [expr]   (precedence 1)
            | [expr] + [expr]   (precedence 0)
+           | [expr] - [expr]   (precedence 0)
 ```

@@ -83,6 +83,17 @@ class Generator {
                         gen->m_output << "    add rax, rbx\n";
                         gen->push("rax");
                     }
+                    else if (auto p_sub = std::get_if<NodeBinExprSub*>(&bin_expr->var)) {
+                        NodeBinExprSub* sub = *p_sub;
+                        gen->gen_expr(sub->lhs);
+                        gen->gen_expr(sub->rhs);
+
+                        // lhs in rax, rhs in rbx, compute lhs - rhs
+                        gen->pop("rbx");
+                        gen->pop("rax");
+                        gen->m_output << "    sub rax, rbx\n";
+                        gen->push("rax");
+                    }
                     else if (auto p_mul = std::get_if<NodeBinExprMulti*>(&bin_expr->var)) {
                         NodeBinExprMulti* mul = *p_mul;
                         gen->gen_expr(mul->lhs);
@@ -91,6 +102,18 @@ class Generator {
                         gen->pop("rbx");
                         gen->pop("rax");
                         gen->m_output << "    imul rax, rbx\n";
+                        gen->push("rax");
+                    }
+                    else if (auto p_div = std::get_if<NodeBinExprDiv*>(&bin_expr->var)) {
+                        NodeBinExprDiv* div = *p_div;
+                        gen->gen_expr(div->lhs);
+                        gen->gen_expr(div->rhs);
+
+                        // Signed division: (rdx:rax) / rbx -> quotient in rax
+                        gen->pop("rbx");
+                        gen->pop("rax");
+                        gen->m_output << "    cqo\n";
+                        gen->m_output << "    idiv rbx\n";
                         gen->push("rax");
                     }
                     else {
