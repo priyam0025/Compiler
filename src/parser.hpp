@@ -156,7 +156,7 @@ public:
                 std::cerr << "Expected term after '*'\n";
                 std::exit(EXIT_FAILURE);
             }
-
+            // wrap rhs term into NodeExpr
             NodeTerm *rhs_term_ptr = rhs_term.value();
             NodeExpr *rhs_expr = m_allocator.alloc<NodeExpr>();
             if (auto r_int = std::get_if<NodeTermIntLit *>(&rhs_term_ptr->var)) {
@@ -199,9 +199,9 @@ public:
         while (peek().has_value() && (peek()->type == TokenType::plus || peek()->type == TokenType::minus)) {
             TokenType op = consume().type; // consume '+' or '-'
 
-            auto right = parse_mul_expr();
+            auto right = parse_mul_expr(); 
             if (!right) {
-                std::cerr << "Expected expression after '+'\n";
+                std::cerr << "Expected expression after '+' or '-'\n";
                 std::exit(EXIT_FAILURE);
             }
 

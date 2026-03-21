@@ -89,7 +89,17 @@ class Tokenizer {
                     tokens.push_back(Token{TokenType::mul, std::nullopt});
                     continue;
                 }
-                else if (c == '/') {
+                else if (c == '/') { // adding the comment out functionality 
+                    if (peek(1).has_value() && peek(1).value() == '/') {
+                        consume(); 
+                        consume(); 
+                        // Skip characters until newline or EOF.
+                        while (peek().has_value() && peek().value() != '\n') {
+                            consume();
+                        }
+                        continue;
+                    }
+
                     consume();
                     tokens.push_back(Token{TokenType::div, std::nullopt});
                     continue;

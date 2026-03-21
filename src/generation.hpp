@@ -147,13 +147,12 @@ class Generator {
                 }
             };
             
-            StmtVisitor visitor {.gen = this};
-            std::visit(visitor, stmt->var);
+            StmtVisitor visitor {.gen = this}; // Create an instance of the visitor and pass current Generator object
+            std::visit(visitor, stmt->var); // std::visit applies the correct operator() based on the variant type
         }
 
         std::string gen_prog() 
         {
-            // use the member output stream (non-const method)
             m_output << "global _start\n_start:\n";
 
             for (const NodeStmt* stmt : m_prog.stmts) {

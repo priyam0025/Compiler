@@ -1,2 +1,3 @@
-let x = 3 * 4 / 2 + 1 - 5;
+let x = 3;
+// let y = 5;
 exit(x);
