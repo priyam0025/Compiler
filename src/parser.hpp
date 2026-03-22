@@ -91,7 +91,7 @@ public:
     {
     }
 
-    std::optional<NodeTerm *> parse_term()
+    std::optional<NodeExpr *> parse_primary_expr()
     {
         auto p = peek();
         if (!p.has_value()) return {};
@@ -100,17 +100,17 @@ public:
             Token t = consume();
             auto lit = m_allocator.alloc<NodeTermIntLit>();
             lit->int_lit = t;
-            auto term = m_allocator.alloc<NodeTerm>();
-            term->var = lit;
-            return term;
+            auto expr = m_allocator.alloc<NodeExpr>();
+            expr->var = lit;
+            return expr;
         }
         else if (p->type == TokenType::ident) {
             Token t = consume();
             auto id = m_allocator.alloc<NodeTermIdent>();
             id->ident = t;
-            auto term = m_allocator.alloc<NodeTerm>();
-            term->var = id;
-            return term;
+            auto expr = m_allocator.alloc<NodeExpr>();
+            expr->var = id;
+            return expr;
         }
         else if (p->type == TokenType::open_paren) {
             consume(); // '('
@@ -124,8 +124,7 @@ public:
                 std::exit(EXIT_FAILURE);
             }
             consume(); // ')'
-            std::cerr << "Parentheses in terms are not supported\n";
-            std::exit(EXIT_FAILURE);
+            return expr;
         }
 
         return {};
@@ -134,37 +133,17 @@ public:
     // parses multiplication/division (left-associative, higher precedence than +/-)
     std::optional<NodeExpr *> parse_mul_expr()
     {
-        auto term = parse_term();
-        if (!term) return {};
+        auto left = parse_primary_expr();
+        if (!left) return {};
 
-        // wrap term into NodeExpr
-        NodeTerm *term_ptr = term.value();
-        NodeExpr *current = m_allocator.alloc<NodeExpr>();
-        if (auto int_lit = std::get_if<NodeTermIntLit *>(&term_ptr->var)) {
-            current->var = *int_lit;
-        } else if (auto ident = std::get_if<NodeTermIdent *>(&term_ptr->var)) {
-            current->var = *ident;
-        } else {
-            return {};
-        }
+        NodeExpr *current = left.value();
 
         while (peek().has_value() && (peek()->type == TokenType::mul || peek()->type == TokenType::div)) {
             TokenType op = consume().type; // consume '*' or '/'
 
-            auto rhs_term = parse_term();
-            if (!rhs_term) {
-                std::cerr << "Expected term after '*'\n";
-                std::exit(EXIT_FAILURE);
-            }
-            // wrap rhs term into NodeExpr
-            NodeTerm *rhs_term_ptr = rhs_term.value();
-            NodeExpr *rhs_expr = m_allocator.alloc<NodeExpr>();
-            if (auto r_int = std::get_if<NodeTermIntLit *>(&rhs_term_ptr->var)) {
-                rhs_expr->var = *r_int;
-            } else if (auto r_ident = std::get_if<NodeTermIdent *>(&rhs_term_ptr->var)) {
-                rhs_expr->var = *r_ident;
-            } else {
-                std::cerr << "Invalid RHS term for multiplicative expression\n";
+            auto rhs_expr = parse_primary_expr();
+            if (!rhs_expr) {
+                std::cerr << "Expected term after '*' or '/'\n";
                 std::exit(EXIT_FAILURE);
             }
 
@@ -172,12 +151,12 @@ public:
             if (op == TokenType::mul) {
                 auto mul = m_allocator.alloc<NodeBinExprMulti>();
                 mul->lhs = current;
-                mul->rhs = rhs_expr;
+                mul->rhs = rhs_expr.value();
                 bin->var = mul;
             } else {
                 auto div = m_allocator.alloc<NodeBinExprDiv>();
                 div->lhs = current;
-                div->rhs = rhs_expr;
+                div->rhs = rhs_expr.value();
                 bin->var = div;
             }
 
