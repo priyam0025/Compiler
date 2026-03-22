@@ -1,0 +1,11 @@
+To get the asm run these commands: 
+
+cmake -S . -B build
+cmake --build build -j
+./build/hydro test.hy
+
+
+To get the return value:
+
+./out
+echo $?
