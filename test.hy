@@ -1,3 +1,6 @@
-let x = 5;
-x = (x + 3);
-exit(x);
+let x = 0;
+if (x) {
+    exit(10);
+} else {
+    exit(20);
+}

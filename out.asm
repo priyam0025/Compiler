@@ -1,22 +1,25 @@
 global _start
 _start:
-    mov rax, 5
+    mov rax, 0
     push rax
     push QWORD [rsp + 0]
 
-    mov rax, 3
-    push rax
-    pop rbx
     pop rax
-    add rax, rbx
+    test rax, rax
+    jz .L_else_0
+    mov rax, 10
     push rax
-    pop rax
-    mov QWORD [rsp + 0], rax
-    push QWORD [rsp + 0]
-
     mov rax, 60
     pop rdi
     syscall
+    jmp .L_end_0
+.L_else_0:
+    mov rax, 20
+    push rax
+    mov rax, 60
+    pop rdi
+    syscall
+.L_end_0:
     mov rax, 60
     mov rdi, 0
     syscall

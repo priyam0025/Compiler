@@ -16,6 +16,7 @@ class Generator {
         inline Generator(NodeProg prog)
             : m_prog(std::move(prog))
         {
+            m_scopes.push_back({}); // global scope
         }
 
         void gen_term(const NodeTerm* term) {
@@ -26,11 +27,12 @@ class Generator {
                     gen->push("rax");
                 }
                 void operator()(const NodeTermIdent* term_ident) const {
-                    if (!gen->m_vars.count(term_ident->ident.value.value())) {
-                        std::cerr << "Undeclaired identifier : " << term_ident->ident.value.value() << std::endl;
+                    auto var_opt = gen->lookup(term_ident->ident.value.value());
+                    if (!var_opt.has_value()) {
+                        std::cerr << "Undeclared identifier: " << term_ident->ident.value.value() << std::endl;
                         exit(EXIT_FAILURE);
                     }
-                    const auto& var = gen->m_vars.at(term_ident->ident.value.value());
+                    const auto& var = var_opt.value();
                     std::stringstream offset;
                     offset << "QWORD [rsp + " << (gen->m_stack_size - var.stack_loc - 1) * 8 << "]";
                     gen->push(offset.str());
@@ -47,11 +49,12 @@ class Generator {
         }
 
         void gen_term_ident(const NodeTermIdent* term_ident) {
-            if (!m_vars.count(term_ident->ident.value.value())) {
-                std::cerr << "Undeclaired identifier : " << term_ident->ident.value.value() << std::endl;
+            auto var_opt = lookup(term_ident->ident.value.value());
+            if (!var_opt.has_value()) {
+                std::cerr << "Undeclared identifier: " << term_ident->ident.value.value() << std::endl;
                 exit(EXIT_FAILURE);
             }
-            const auto& var = m_vars.at(term_ident->ident.value.value());
+            const auto& var = var_opt.value();
             std::stringstream offset;
             offset << "QWORD [rsp + " << (m_stack_size - var.stack_loc - 1) * 8 << "]\n";
             push(offset.str());
@@ -139,30 +142,78 @@ class Generator {
                 }
                 void operator()(const NodeStmtLet* stmt_let) const
                 {
+                    if (gen->m_scopes.back().count(stmt_let->ident.value.value())) {
+                        std::cerr << "Variable already declared in this scope: " << stmt_let->ident.value.value() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
                     // Evaluate RHS first so the value is pushed on the stack
                     gen->gen_expr(stmt_let->expr);
 
-                    // Record the variable location as the current top of stack
-                    gen->m_vars.insert({stmt_let->ident.value.value(), Var {.stack_loc = gen->m_stack_size - 1}});
+                    // Record the variable location as the current top of stack in the inner-most scope
+                    gen->m_scopes.back().insert({stmt_let->ident.value.value(), Var {.stack_loc = gen->m_stack_size - 1}});
                 }
                 void operator()(const NodeStmtAssign* stmt_assign) const
                 {
                     // Evaluate RHS first so the value is pushed on the stack
                     gen->gen_expr(stmt_assign->expr);
 
-                    // Check if variable is declared
-                    if (!gen->m_vars.count(stmt_assign->ident.value.value())) {
+                    // Check if variable is declared in any accessible scope
+                    auto var_opt = gen->lookup(stmt_assign->ident.value.value());
+                    if (!var_opt.has_value()) {
                         std::cerr << "Undeclared identifier: " << stmt_assign->ident.value.value() << std::endl;
                         exit(EXIT_FAILURE);
                     }
 
-                    const auto& var = gen->m_vars.at(stmt_assign->ident.value.value());
+                    const auto& var = var_opt.value();
 
                     // Pop expression result into RAX
                     gen->pop("rax");
 
                     // Move result from RAX to variable stack offset
                     gen->m_output << "    mov QWORD [rsp + " << (gen->m_stack_size - var.stack_loc - 1) * 8 << "], rax\n";
+                }
+                void operator()(const NodeStmtBlock* stmt_block) const
+                {
+                    gen->m_scopes.push_back({});
+                    size_t initial_stack_size = gen->m_stack_size;
+
+                    for (const NodeStmt* stmt : stmt_block->stmts) {
+                        gen->gen_stmt(stmt);
+                    }
+
+                    size_t vars_declared = gen->m_stack_size - initial_stack_size;
+                    if (vars_declared > 0) {
+                        gen->m_output << "    add rsp, " << vars_declared * 8 << "\n";
+                        gen->m_stack_size -= vars_declared;
+                    }
+
+                    gen->m_scopes.pop_back();
+                }
+                void operator()(const NodeStmtIf* stmt_if) const
+                {
+                    gen->gen_expr(stmt_if->cond);
+                    gen->pop("rax");
+
+                    size_t label_id = gen->m_label_count++;
+                    std::string else_label = ".L_else_" + std::to_string(label_id);
+                    std::string end_label = ".L_end_" + std::to_string(label_id);
+
+                    gen->m_output << "    test rax, rax\n";
+                    if (stmt_if->else_stmt.has_value()) {
+                        gen->m_output << "    jz " << else_label << "\n";
+                    } else {
+                        gen->m_output << "    jz " << end_label << "\n";
+                    }
+
+                    gen->gen_stmt(stmt_if->then_stmt);
+
+                    if (stmt_if->else_stmt.has_value()) {
+                        gen->m_output << "    jmp " << end_label << "\n";
+                        gen->m_output << else_label << ":\n";
+                        gen->gen_stmt(stmt_if->else_stmt.value());
+                    }
+
+                    gen->m_output << end_label << ":\n";
                 }
             };
             
@@ -199,9 +250,19 @@ class Generator {
         struct Var {
             size_t stack_loc;
         };
+
+        std::optional<Var> lookup(const std::string& name) const {
+            for (auto it = m_scopes.rbegin(); it != m_scopes.rend(); ++it) {
+                if (it->count(name)) {
+                    return it->at(name);
+                }
+            }
+            return std::nullopt;
+        }
         
         const NodeProg m_prog;
         std::stringstream m_output;
         size_t m_stack_size = 0;
-        std::unordered_map<std::string, Var> m_vars {};
+        std::vector<std::unordered_map<std::string, Var>> m_scopes {};
+        size_t m_label_count = 0;
 };

@@ -79,9 +79,23 @@ struct NodeStmtAssign
     NodeExpr *expr;
 };
 
+struct NodeStmt;
+
+struct NodeStmtBlock
+{
+    std::vector<NodeStmt *> stmts;
+};
+
+struct NodeStmtIf
+{
+    NodeExpr *cond;
+    NodeStmt *then_stmt;
+    std::optional<NodeStmt *> else_stmt;
+};
+
 struct NodeStmt
 {
-    std::variant<NodeStmtExit *, NodeStmtLet *, NodeStmtAssign *> var;
+    std::variant<NodeStmtExit *, NodeStmtLet *, NodeStmtAssign *, NodeStmtBlock *, NodeStmtIf *> var;
 };
 
 struct NodeProg
@@ -297,6 +311,86 @@ public:
 
                 auto node_stmt = m_allocator.alloc<NodeStmt>();
                 node_stmt->var = node_stmt_assign;
+                return node_stmt;
+            }
+            // { stmts* }
+            else if (peek()->type == TokenType::open_curly)
+            {
+                consume(); // consume '{'
+                auto node_stmt_block = m_allocator.alloc<NodeStmtBlock>();
+                while (peek().has_value() && peek()->type != TokenType::close_curly)
+                {
+                    if (auto stmt = parse_stat())
+                    {
+                        node_stmt_block->stmts.push_back(stmt.value());
+                    }
+                    else
+                    {
+                        std::cerr << "Invalid statement inside block\n";
+                        std::exit(EXIT_FAILURE);
+                    }
+                }
+                if (!peek().has_value() || peek()->type != TokenType::close_curly)
+                {
+                    std::cerr << "Expected '}'\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                consume(); // consume '}'
+
+                auto node_stmt = m_allocator.alloc<NodeStmt>();
+                node_stmt->var = node_stmt_block;
+                return node_stmt;
+            }
+            // if (expr) stmt [else stmt]
+            else if (peek()->type == TokenType::if_tok)
+            {
+                consume(); // consume 'if'
+                if (!peek().has_value() || peek()->type != TokenType::open_paren)
+                {
+                    std::cerr << "Expected '(' after if\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                consume(); // consume '('
+                auto cond = parse_expr();
+                if (!cond)
+                {
+                    std::cerr << "Expected condition expression inside if(...)\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                if (!peek().has_value() || peek()->type != TokenType::close_paren)
+                {
+                    std::cerr << "Expected ')' after if condition\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                consume(); // consume ')'
+                
+                auto then_stmt = parse_stat();
+                if (!then_stmt)
+                {
+                    std::cerr << "Expected statement after if condition\n";
+                    std::exit(EXIT_FAILURE);
+                }
+
+                std::optional<NodeStmt*> else_stmt = std::nullopt;
+                if (peek().has_value() && peek()->type == TokenType::else_tok)
+                {
+                    consume(); // consume 'else'
+                    auto else_stmt_node = parse_stat();
+                    if (!else_stmt_node)
+                    {
+                        std::cerr << "Expected statement after else keyword\n";
+                        std::exit(EXIT_FAILURE);
+                    }
+                    else_stmt = else_stmt_node.value();
+                }
+
+                auto node_stmt_if = m_allocator.alloc<NodeStmtIf>();
+                node_stmt_if->cond = cond.value();
+                node_stmt_if->then_stmt = then_stmt.value();
+                node_stmt_if->else_stmt = else_stmt;
+
+                auto node_stmt = m_allocator.alloc<NodeStmt>();
+                node_stmt->var = node_stmt_if;
                 return node_stmt;
             }
             else

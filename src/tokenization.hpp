@@ -7,7 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 
-enum class TokenType { exit, int_lit, semi, open_paren, close_paren, ident, let, eq, plus, minus, mul, div};
+enum class TokenType { exit, int_lit, semi, open_paren, close_paren, ident, let, eq, plus, minus, mul, div, open_curly, close_curly, if_tok, else_tok };
 struct Token {
     TokenType type;
     std::optional<std::string> value;
@@ -40,6 +40,14 @@ class Tokenizer {
                         tokens.push_back(Token{TokenType::let, std::nullopt});
                         continue;
                     } 
+                    else if (buf == "if") {
+                        tokens.push_back(Token{TokenType::if_tok, std::nullopt});
+                        continue;
+                    }
+                    else if (buf == "else") {
+                        tokens.push_back(Token{TokenType::else_tok, std::nullopt});
+                        continue;
+                    }
                     else {
                         tokens.push_back(Token{TokenType::ident, buf});
                         continue;
@@ -62,6 +70,16 @@ class Tokenizer {
                 else if (c == '(') {
                     consume();
                     tokens.push_back(Token{TokenType::open_paren, std::nullopt});
+                    continue;
+                }
+                else if (c == '}') {
+                    consume();
+                    tokens.push_back(Token{TokenType::close_curly, std::nullopt});
+                    continue;
+                }
+                else if (c == '{') {
+                    consume();
+                    tokens.push_back(Token{TokenType::open_curly, std::nullopt});
                     continue;
                 }
                 else if (c == ';') {
