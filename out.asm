@@ -1,34 +1,19 @@
 global _start
 _start:
-    mov rax, 4
-    push rax
-    mov rax, 1
-    push rax
-    pop rbx
-    pop rax
-    sub rax, rbx
-    push rax
-    mov rax, 2
-    push rax
-    pop rbx
-    pop rax
-    imul rax, rbx
+    mov rax, 5
     push rax
     push QWORD [rsp + 0]
 
-    mov rax, 2
-    push rax
-    pop rbx
-    pop rax
-    cqo
-    idiv rbx
-    push rax
     mov rax, 3
     push rax
     pop rbx
     pop rax
-    imul rax, rbx
+    add rax, rbx
     push rax
+    pop rax
+    mov QWORD [rsp + 0], rax
+    push QWORD [rsp + 0]
+
     mov rax, 60
     pop rdi
     syscall

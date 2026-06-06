@@ -73,9 +73,15 @@ struct NodeStmtLet
     NodeExpr *expr;
 };
 
+struct NodeStmtAssign
+{
+    Token ident;
+    NodeExpr *expr;
+};
+
 struct NodeStmt
 {
-    std::variant<NodeStmtExit *, NodeStmtLet *> var;
+    std::variant<NodeStmtExit *, NodeStmtLet *, NodeStmtAssign *> var;
 };
 
 struct NodeProg
@@ -265,6 +271,32 @@ public:
 
                 auto node_stmt = m_allocator.alloc<NodeStmt>();
                 node_stmt->var = node_stmt_let;
+                return node_stmt;
+            }
+            // <ident> = expr;
+            else if (peek()->type == TokenType::ident && peek(1).has_value() && peek(1)->type == TokenType::eq)
+            {
+                Token ident_token = consume(); // consume identifier
+                consume();                     // consume '='
+                auto expr = parse_expr();
+                if (!expr)
+                {
+                    std::cerr << "Invalid expression in assignment statement\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                if (!peek().has_value() || peek()->type != TokenType::semi)
+                {
+                    std::cerr << "Expected ';' after assignment statement\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                consume(); // consume ';'
+
+                auto node_stmt_assign = m_allocator.alloc<NodeStmtAssign>();
+                node_stmt_assign->ident = ident_token;
+                node_stmt_assign->expr = expr.value();
+
+                auto node_stmt = m_allocator.alloc<NodeStmt>();
+                node_stmt->var = node_stmt_assign;
                 return node_stmt;
             }
             else

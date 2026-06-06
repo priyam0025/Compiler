@@ -145,6 +145,25 @@ class Generator {
                     // Record the variable location as the current top of stack
                     gen->m_vars.insert({stmt_let->ident.value.value(), Var {.stack_loc = gen->m_stack_size - 1}});
                 }
+                void operator()(const NodeStmtAssign* stmt_assign) const
+                {
+                    // Evaluate RHS first so the value is pushed on the stack
+                    gen->gen_expr(stmt_assign->expr);
+
+                    // Check if variable is declared
+                    if (!gen->m_vars.count(stmt_assign->ident.value.value())) {
+                        std::cerr << "Undeclared identifier: " << stmt_assign->ident.value.value() << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+
+                    const auto& var = gen->m_vars.at(stmt_assign->ident.value.value());
+
+                    // Pop expression result into RAX
+                    gen->pop("rax");
+
+                    // Move result from RAX to variable stack offset
+                    gen->m_output << "    mov QWORD [rsp + " << (gen->m_stack_size - var.stack_loc - 1) * 8 << "], rax\n";
+                }
             };
             
             StmtVisitor visitor {.gen = this}; // Create an instance of the visitor and pass current Generator object
